@@ -4,7 +4,7 @@ import { connectDB } from '../../../utils/db';
 import User from '../../../models/User';
 import bcrypt from 'bcryptjs';
 
-export default NextAuth({
+export const authOptions = {
   providers: [
     CredentialsProvider({
       name: 'Credentials',
@@ -26,7 +26,7 @@ export default NextAuth({
         }
 
         return {
-          id: user._id,
+          id: user._id.toString(),
           email: user.email,
           name: user.name,
           role: user.role
@@ -37,12 +37,16 @@ export default NextAuth({
   callbacks: {
     jwt: async ({ token, user }) => {
       if (user) {
+        token.id = user.id;
         token.role = user.role;
       }
       return token;
     },
     session: async ({ session, token }) => {
-      session.user.role = token.role;
+      if (token) {
+        session.user.id = token.id;
+        session.user.role = token.role;
+      }
       return session;
     }
   },
@@ -52,4 +56,6 @@ export default NextAuth({
   session: {
     strategy: 'jwt',
   },
-});
+};
+
+export default NextAuth(authOptions);

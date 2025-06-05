@@ -1,21 +1,31 @@
 import { connectDB } from '../../../utils/db';
 import Booking from '../../../models/Booking';
-import { getSession } from 'next-auth/react';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '../auth/[...nextauth]';
 
 export default async function handler(req, res) {
-  await connectDB();
-  const session = await getSession({ req });
+  const session = await getServerSession(req, res, authOptions);
 
   if (!session) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
+  await connectDB();
+
   if (req.method === 'GET') {
     try {
-      const bookings = await Booking.find({})
+      let query = {};
+      
+      // If user is a therapist, only show their bookings
+      if (session.user.role === 'therapist') {
+        query.therapist = session.user.id;
+      }
+
+      const bookings = await Booking.find(query)
         .populate('package')
         .populate('therapist', 'name')
         .sort({ date: -1 });
+
       res.status(200).json(bookings);
     } catch (error) {
       res.status(500).json({ error: 'Error fetching bookings' });
